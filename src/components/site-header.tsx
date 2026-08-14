@@ -14,6 +14,12 @@ export async function SiteHeader() {
         <Wordmark />
         <div className="flex items-center gap-6 text-sm">
           <Link
+            href="/browse"
+            className="text-muted transition-colors hover:text-foreground"
+          >
+            Browse
+          </Link>
+          <Link
             href="/plans"
             className="text-muted transition-colors hover:text-foreground"
           >

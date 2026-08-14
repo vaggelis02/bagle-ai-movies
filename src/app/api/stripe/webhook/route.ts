@@ -70,6 +70,49 @@ async function mirrorSubscription(sub: Stripe.Subscription) {
   );
 
   if (error) console.error("stripe webhook: upsert failed", error.message);
+
+  await syncCreatorRole(userId, planId, sub.status);
+}
+
+/**
+ * A creator plan is what makes someone a creator. Without this the upload page
+ * would refuse everyone forever, since nothing else ever changes a role.
+ *
+ * Promotion happens here, using the service key, precisely because a user must
+ * not be able to grant themselves the role — the lock_profile_role trigger
+ * blocks them from doing it directly.
+ */
+async function syncCreatorRole(
+  userId: string,
+  planId: string | null,
+  status: string,
+) {
+  if (!planId) return;
+  const supabase = createAdminClient();
+
+  const { data: plan } = await supabase
+    .from("plans")
+    .select("audience")
+    .eq("id", planId)
+    .maybeSingle();
+
+  if (plan?.audience !== "creator") return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", userId)
+    .maybeSingle();
+
+  // Never touch an administrator's role.
+  if (!profile || profile.role === "admin") return;
+
+  const live = ["active", "trialing", "past_due"].includes(status);
+  const next = live ? "creator" : "viewer";
+
+  if (profile.role !== next) {
+    await supabase.from("profiles").update({ role: next }).eq("id", userId);
+  }
 }
 
 export async function POST(request: NextRequest) {
