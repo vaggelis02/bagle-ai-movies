@@ -15,11 +15,11 @@
 -- bandwidth are taken out. Raising it to 70% drops the margin to roughly 22%.
 
 insert into plans (id, audience, name, stripe_price_id, max_profiles, creator_share_bps, affiliate_bps, is_active) values
-  ('viewer_solo',    'viewer',  'BAGLE FLIX — Solo',                   'price_1U4Mr5IpDQkBg3toIGiBgsnY', 1, 4000, 1000, true),
-  ('viewer_family',  'viewer',  'BAGLE FLIX — Family',                 'price_1U4Mr7IpDQkBg3toaHPSrl0e', 5, 4000, 1000, true),
-  ('creator_films',  'creator', 'BAGLE FLIX Creator — Films',          'price_1U4Mr8IpDQkBg3to1hxtkzC8', 1,    0, 1000, true),
-  ('creator_series', 'creator', 'BAGLE FLIX Creator — Series',         'price_1U4Mr9IpDQkBg3tosVpX8bPH', 1,    0, 1000, true),
-  ('creator_all',    'creator', 'BAGLE FLIX Creator — Films + Series', 'price_1U4MrAIpDQkBg3toK2mrM70c', 1,    0, 1000, true)
+  ('viewer_solo',    'viewer',  'BAGLE FLIX — Solo',                   'price_1U4NgtEksr9fnHE43eA4esrr', 1, 4000, 1000, true),
+  ('viewer_family',  'viewer',  'BAGLE FLIX — Family',                 'price_1U4NguEksr9fnHE4dpMEAO4O', 5, 4000, 1000, true),
+  ('creator_films',  'creator', 'BAGLE FLIX Creator — Films',          'price_1U4NgvEksr9fnHE4x9QUwInb', 1,    0, 1000, true),
+  ('creator_series', 'creator', 'BAGLE FLIX Creator — Series',         'price_1U4NgxEksr9fnHE4WFHYkuRb', 1,    0, 1000, true),
+  ('creator_all',    'creator', 'BAGLE FLIX Creator — Films + Series', 'price_1U4NgyEksr9fnHE4G3X5YoNo', 1,    0, 1000, true)
 on conflict (id) do update set
   name              = excluded.name,
   stripe_price_id   = excluded.stripe_price_id,
