@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 /**
  * The support agent.
@@ -22,6 +22,36 @@ import { createClient } from "@/lib/supabase/server";
 
 const MAX_MESSAGE_CHARS = 2000;
 const MAX_TURNS = 20;
+
+/** Messages one person may send per hour. Generous for a real question,
+ *  useless for anyone trying to run up the bill. */
+const MESSAGES_PER_HOUR = 25;
+
+/**
+ * Counts this message against an hourly allowance and says whether to proceed.
+ * Signed-in people are counted per account; everyone else per IP address.
+ *
+ * Fails OPEN: if the counter itself is broken, a genuine customer still gets
+ * help. The limit exists to blunt abuse, not to be a gate we cannot open.
+ */
+async function withinAllowance(request: NextRequest, userId: string | null) {
+  const ip =
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    request.headers.get("x-real-ip") ||
+    "unknown";
+  const subject = userId ? `user:${userId}` : `ip:${ip}`;
+
+  try {
+    const { data, error } = await createAdminClient().rpc(
+      "bump_support_usage",
+      { subject_key: subject },
+    );
+    if (error) return true;
+    return typeof data === "number" ? data <= MESSAGES_PER_HOUR : true;
+  } catch {
+    return true;
+  }
+}
 
 type Turn = { role: "user" | "assistant"; content: string };
 
@@ -61,7 +91,10 @@ async function accountContext() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return "The person you are talking to is not signed in. You cannot see any account details. If they ask about their own subscription or charges, ask them to sign in first.";
+    return {
+      userId: null,
+      text: "The person you are talking to is not signed in. You cannot see any account details. If they ask about their own subscription or charges, ask them to sign in first.",
+    };
   }
 
   const [{ data: profile }, { data: sub }] = await Promise.all([
@@ -99,7 +132,7 @@ async function accountContext() {
     lines.push("- No subscription. This person has never subscribed.");
   }
 
-  return lines.join("\n");
+  return { userId: user.id, text: lines.join("\n") };
 }
 
 export async function POST(request: NextRequest) {
@@ -138,8 +171,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nothing to answer." }, { status: 400 });
   }
 
-  const anthropic = new Anthropic({ apiKey: key });
   const account = await accountContext();
+
+  if (!(await withinAllowance(request, account.userId))) {
+    return NextResponse.json(
+      {
+        error:
+          "You have reached the limit for support messages this hour. Email support@bagleflix.com and a person will help.",
+      },
+      { status: 429 },
+    );
+  }
+
+  const anthropic = new Anthropic({ apiKey: key });
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -159,7 +203,7 @@ export async function POST(request: NextRequest) {
             { type: "text", text: BRIEF, cache_control: { type: "ephemeral" } },
             // Not cached: differs per person, so it must sit after the
             // breakpoint or it would invalidate the cache for everyone.
-            { type: "text", text: account },
+            { type: "text", text: account.text },
           ],
           messages,
         });
