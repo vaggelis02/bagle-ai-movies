@@ -13,6 +13,12 @@ export async function SiteHeader() {
       <nav className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
         <Wordmark />
         <div className="flex items-center gap-6 text-sm">
+          <Link
+            href="/plans"
+            className="text-muted transition-colors hover:text-foreground"
+          >
+            Plans
+          </Link>
           {user ? (
             <Link
               href="/account"

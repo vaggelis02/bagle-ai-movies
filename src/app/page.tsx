@@ -65,10 +65,10 @@ export default function Home() {
 
           <div className="mt-10 flex flex-wrap items-center gap-4">
             <Link
-              href="/signup"
+              href="/plans"
               className="rounded-full bg-accent px-6 py-3 text-sm font-medium text-[#1a1206] transition-colors hover:bg-accent-strong"
             >
-              Browse the catalogue
+              See plans
             </Link>
             <Link
               href="/creators"
