@@ -1,36 +1,64 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# BAGLE FLIX
 
-## Getting Started
+A subscription streaming platform whose catalogue contains **only AI-generated
+films and series**. Two-sided: creators pay a monthly plan to host their work,
+viewers pay a monthly subscription to watch it.
 
-First, run the development server:
+Operated by SV SOCIAL MEDIA LTD (Cyprus).
+
+## Stack
+
+| Layer | Choice |
+| --- | --- |
+| App | Next.js 16 (App Router, TypeScript) |
+| Styling | Tailwind CSS 4 |
+| Data + Auth | Supabase (Postgres, Auth, Row Level Security) |
+| Video | Bunny Stream (adaptive HLS, token auth, DRM) |
+| Payments | Stripe Billing (subscriptions) |
+| Hosting | Vercel, auto-deploy from `main` |
+
+## The non-negotiable rule
+
+**No video URL is ever public.** Playback always follows this path:
+
+1. The browser requests a film.
+2. The **server** checks that the user is authenticated and holds an active
+   entitlement for it — a viewer subscription, ownership of the title, or admin.
+3. Only then does the server mint a **short-lived signed Bunny token**.
+4. The token expires within minutes and is bound to the session.
+
+If a video ID or URL ever reaches an unauthenticated client, the whole
+catalogue becomes downloadable. This is the core security requirement of the
+product, not an optimisation.
+
+Access is enforced in Postgres Row Level Security, not only in application code.
+
+## Local development
+
+Node.js 24 LTS is required.
 
 ```bash
+npm install
+cp .env.example .env.local   # then fill in the real values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app runs at http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Build status
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Phase | Scope | State |
+| --- | --- | --- |
+| 1 | Repo, Next.js foundation, Supabase schema + RLS, auth | In progress |
+| 2 | Bunny Stream upload, signed playback, first film live | Not started |
+| 3 | Catalogue, search, series support, creator dashboard | Not started |
+| 4 | Stripe subscriptions, affiliates, admin panel | Not started |
+| 5 | Stripe live activation, custom domain, legal + VAT | Not started |
 
-## Learn More
+Routes that exist but are not yet built render an honest "coming soon" screen —
+no button on this site pretends to do something it cannot do.
 
-To learn more about Next.js, take a look at the following resources:
+## Secrets
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Real keys live in `.env.local` (git-ignored) and in Vercel's environment
+variable settings. They are never committed, and never sent over chat.
