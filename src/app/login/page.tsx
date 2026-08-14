@@ -1,13 +1,34 @@
-import { ComingSoon } from "@/components/coming-soon";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { AuthShell } from "@/components/auth-ui";
+import { LoginForm } from "@/components/login-form";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = { title: "Sign in" };
 
-export default function LoginPage() {
+export default async function LoginPage(props: PageProps<"/login">) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (user) redirect("/account");
+
+  const { error } = await props.searchParams;
+
   return (
-    <ComingSoon
-      phase="Phase 1"
-      title="Sign in"
-      description="Email and magic-link sign-in goes live as soon as the database is connected."
-    />
+    <AuthShell
+      title="Welcome back"
+      subtitle="Sign in to keep watching."
+      footer={
+        <>
+          No account yet?{" "}
+          <Link href="/signup" className="text-accent hover:underline">
+            Create one
+          </Link>
+        </>
+      }
+    >
+      <LoginForm initialError={typeof error === "string" ? error : undefined} />
+    </AuthShell>
   );
 }
