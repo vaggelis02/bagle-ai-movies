@@ -33,7 +33,7 @@ export async function startCheckout(
 
   const { data: plan } = await supabase
     .from("plans")
-    .select("id, name, stripe_price_id, audience")
+    .select("id, name, stripe_price_id, audience, trial_days")
     .eq("id", planId)
     .eq("is_active", true)
     .single();
@@ -61,8 +61,14 @@ export async function startCheckout(
         : { customer_email: user.email }),
       client_reference_id: user.id,
       // Carried through to the subscription so the webhook can attribute it
-      // without depending on email matching.
-      subscription_data: { metadata: { user_id: user.id, plan_id: plan.id } },
+      // without depending on email matching. The free trial is read from the
+      // plan rather than hardcoded, so its length changes with one UPDATE.
+      subscription_data: {
+        metadata: { user_id: user.id, plan_id: plan.id },
+        ...(plan.trial_days > 0
+          ? { trial_period_days: plan.trial_days }
+          : {}),
+      },
       metadata: { user_id: user.id, plan_id: plan.id },
       success_url: `${siteUrl()}/account?checkout=success`,
       cancel_url: `${siteUrl()}/plans?checkout=cancelled`,

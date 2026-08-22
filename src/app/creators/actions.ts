@@ -2,6 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { createVideo, getVideo, mapStatus, uploadSignature } from "@/lib/bunny";
+import {
+  MAX_PRICE_CENTS,
+  MIN_PURCHASE_CENTS,
+  MIN_RENTAL_CENTS,
+  formatMoney,
+} from "@/lib/pricing";
 import { createAdminClient, createClient } from "@/lib/supabase/server";
 
 export type NewTitleState = {
@@ -51,6 +57,42 @@ export async function createFilmDraft(
 
   if (!name) return { error: "Give the film a title." };
 
+  // Prices arrive as dollars from the form and are stored as integer cents.
+  // The database enforces the floor and ceiling too — this check exists to
+  // give a readable message rather than a constraint violation.
+  const toCents = (field: string) => {
+    const raw = String(formData.get(field) ?? "").trim();
+    if (!raw) return null;
+    const dollars = Number(raw.replace(/[^0-9.]/g, ""));
+    return Number.isFinite(dollars) ? Math.round(dollars * 100) : NaN;
+  };
+
+  const rental = toCents("rental_price");
+  const purchase = toCents("purchase_price");
+
+  if (Number.isNaN(rental) || Number.isNaN(purchase)) {
+    return { error: "Prices must be numbers." };
+  }
+  if (rental === null && purchase === null) {
+    return { error: "Set a rental price, a purchase price, or both." };
+  }
+  if (rental !== null && (rental < MIN_RENTAL_CENTS || rental > MAX_PRICE_CENTS)) {
+    return {
+      error: `A rental must be between ${formatMoney(MIN_RENTAL_CENTS)} and ${formatMoney(MAX_PRICE_CENTS)}.`,
+    };
+  }
+  if (
+    purchase !== null &&
+    (purchase < MIN_PURCHASE_CENTS || purchase > MAX_PRICE_CENTS)
+  ) {
+    return {
+      error: `A purchase must be between ${formatMoney(MIN_PURCHASE_CENTS)} and ${formatMoney(MAX_PRICE_CENTS)}.`,
+    };
+  }
+  if (rental !== null && purchase !== null && purchase < rental) {
+    return { error: "Buying cannot cost less than renting." };
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -89,6 +131,9 @@ export async function createFilmDraft(
       synopsis: synopsis || null,
       release_year: year ? Number(year) : null,
       genres,
+      currency: "usd",
+      rental_price_cents: rental,
+      purchase_price_cents: purchase,
       status: "draft",
     })
     .select("id, slug")

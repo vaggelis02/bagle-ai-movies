@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BuyButtons } from "@/components/buy-buttons";
+import { describeEntitlement } from "@/lib/pricing";
 import { createClient } from "@/lib/supabase/server";
 
 type Episode = {
@@ -43,22 +45,46 @@ export default async function TitlePage(props: PageProps<"/title/[slug]">) {
   const { data: title } = await supabase
     .from("titles")
     .select(
-      "id, slug, kind, title, original_title, synopsis, genres, release_year, poster_url, status",
+      "id, slug, kind, title, original_title, synopsis, genres, release_year, poster_url, status, currency, rental_price_cents, purchase_price_cents, rental_hours",
     )
     .eq("slug", slug)
     .maybeSingle();
 
   if (!title) notFound();
 
-  const { data: episodeRows } = await supabase
-    .from("episodes")
-    .select("id, episode_number, name, duration_seconds, status, season_id")
-    .eq("title_id", title.id)
-    .order("episode_number");
+  const [{ data: episodeRows }, { data: held }] = await Promise.all([
+    supabase
+      .from("episodes")
+      .select("id, episode_number, name, duration_seconds, status, season_id")
+      .eq("title_id", title.id)
+      .order("episode_number"),
+    // RLS limits this to the viewer's own rows, so an unowned title returns
+    // nothing rather than somebody else's purchase.
+    user
+      ? supabase
+          .from("entitlements")
+          .select("kind, expires_at")
+          .eq("title_id", title.id)
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
 
   const episodes = (episodeRows ?? []) as Episode[];
   const playable = episodes.filter((e) => e.status === "ready");
   const first = playable[0];
+
+  const entitlement = held as {
+    kind: "rental" | "purchase";
+    expires_at: string | null;
+  } | null;
+
+  const canWatch =
+    Boolean(entitlement) &&
+    (entitlement!.expires_at === null ||
+      new Date(entitlement!.expires_at) > new Date());
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-14">
@@ -112,25 +138,50 @@ export default async function TitlePage(props: PageProps<"/title/[slug]">) {
             </p>
           )}
 
-          <div className="mt-8">
-            {first ? (
-              <Link
-                href={`/watch/${first.id}`}
-                className="inline-block rounded-full bg-accent px-6 py-3 text-sm font-medium text-[#1a1206] transition-colors hover:bg-accent-strong"
-              >
-                {title.kind === "series" ? "Play first episode" : "Play"}
-              </Link>
-            ) : (
+          <div className="mt-8 space-y-4">
+            {!first && (
               <p className="text-sm text-muted">
                 {episodes.length === 0
                   ? "No video has been uploaded yet."
                   : "Still processing — this becomes playable once encoding finishes."}
               </p>
             )}
-            {!user && first && (
-              <p className="mt-3 text-xs text-muted">
-                You will need an account and an active subscription to watch.
-              </p>
+
+            {first && canWatch && (
+              <div className="space-y-2">
+                <Link
+                  href={`/watch/${first.id}`}
+                  className="inline-block rounded-full bg-accent px-6 py-3 text-sm font-medium text-[#1a1206] transition-colors hover:bg-accent-strong"
+                >
+                  {title.kind === "series" ? "Play first episode" : "Play"}
+                </Link>
+                <p className="text-xs text-accent-strong">
+                  {describeEntitlement(
+                    entitlement!.kind,
+                    entitlement!.expires_at,
+                  )}
+                </p>
+              </div>
+            )}
+
+            {first && !canWatch && title.status === "published" && (
+              <BuyButtons
+                slug={title.slug}
+                currency={title.currency}
+                rentalCents={title.rental_price_cents}
+                purchaseCents={title.purchase_price_cents}
+                rentalHours={title.rental_hours}
+                signedIn={Boolean(user)}
+              />
+            )}
+
+            {first && !canWatch && title.status !== "published" && (
+              <Link
+                href={`/watch/${first.id}`}
+                className="inline-block rounded-full border border-border px-6 py-3 text-sm font-medium transition-colors hover:border-accent hover:text-accent"
+              >
+                Preview your draft
+              </Link>
             )}
           </div>
         </div>

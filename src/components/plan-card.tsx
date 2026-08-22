@@ -2,11 +2,13 @@
 
 import { useActionState } from "react";
 import { startCheckout, type CheckoutState } from "@/app/plans/actions";
+import { formatMoney } from "@/lib/pricing";
 
 export function PlanCard({
   id,
   name,
   amount,
+  currency = "usd",
   detail,
   signedIn,
   featured = false,
@@ -14,6 +16,7 @@ export function PlanCard({
   id: string;
   name: string;
   amount: number | null;
+  currency?: string;
   detail: string;
   signedIn: boolean;
   featured?: boolean;
@@ -37,7 +40,7 @@ export function PlanCard({
 
       <p className="mt-6 flex items-baseline gap-1">
         <span className="text-3xl font-semibold tracking-tight">
-          {amount === null ? "—" : `€${(amount / 100).toFixed(0)}`}
+          {amount === null ? "—" : formatMoney(amount, currency).replace(/\.00$/, "")}
         </span>
         <span className="text-sm text-muted">/month</span>
       </p>

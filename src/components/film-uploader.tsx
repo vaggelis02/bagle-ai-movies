@@ -95,6 +95,43 @@ export function FilmUploader() {
             className="w-full rounded-lg border border-border bg-surface px-3.5 py-2.5 text-sm text-foreground outline-none transition-colors placeholder:text-muted/60 focus:border-accent"
           />
         </label>
+
+        <div className="rounded-xl border border-border bg-surface p-4">
+          <p className="text-xs font-medium tracking-wide text-muted">
+            YOUR PRICES (USD)
+          </p>
+          <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <Field
+              label="Rent"
+              name="rental_price"
+              type="number"
+              step="0.01"
+              min="1.99"
+              defaultValue="3.99"
+              placeholder="3.99"
+            />
+            <Field
+              label="Buy"
+              name="purchase_price"
+              type="number"
+              step="0.01"
+              min="4.99"
+              defaultValue="9.99"
+              placeholder="9.99"
+            />
+          </div>
+          <p className="mt-3 text-xs text-muted">
+            You keep 80% of every sale. Leave one empty to offer only the other.{" "}
+            <Link
+              href="/creators/pricing"
+              target="_blank"
+              className="text-accent hover:underline"
+            >
+              How to choose
+            </Link>
+          </p>
+        </div>
+
         <SubmitButton pending={pending}>Continue to upload</SubmitButton>
       </form>
     );
