@@ -58,14 +58,22 @@ export default async function CreatorsPage() {
     <main className="mx-auto w-full max-w-3xl flex-1 px-6 py-16">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Your films</h1>
-        {isCreator && (
+        <div className="flex flex-wrap gap-3">
           <Link
-            href="/creators/new"
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-[#1a1206] transition-colors hover:bg-accent-strong"
+            href="/creators/earnings"
+            className="rounded-full border border-border px-5 py-2.5 text-sm transition-colors hover:border-accent hover:text-accent"
           >
-            Upload a film
+            Earnings
           </Link>
-        )}
+          {isCreator && (
+            <Link
+              href="/creators/new"
+              className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-[#1a1206] transition-colors hover:bg-accent-strong"
+            >
+              Upload a film
+            </Link>
+          )}
+        </div>
       </div>
 
       {!isCreator && (
